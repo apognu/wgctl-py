@@ -67,3 +67,8 @@ tunnel: Personal VPN server #1
     allowed ips: 192.168.0.0/24, 192.168.1.0/24
     preshared key? True
 ```
+
+# Credits
+
+ * WireGuard NetLink integration:<br>
+   https://gist.github.com/artizirk/3a8efeee33fce34baf6047aed7205a2e

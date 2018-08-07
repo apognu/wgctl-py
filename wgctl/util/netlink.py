@@ -1,4 +1,5 @@
 # Module adapted from artizirk's work
+# Original source: https://gist.github.com/artizirk/3a8efeee33fce34baf6047aed7205a2e
 
 import struct
 import socket
