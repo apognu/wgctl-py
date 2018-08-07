@@ -22,6 +22,7 @@ def up(context, instance):
   address, cidr = parse_net(config['interface']['address'])
   port = config['interface']['listen_port']
   pkey = config['interface']['private_key']
+  fwmark = config['interface']['fwmark']
   peers = config['peers']
 
   ip = IPRoute()
@@ -32,7 +33,7 @@ def up(context, instance):
   ip.link('set', index=index, state='up')
   ip.addr('add', index=index, address=address, prefixlen=cidr)
 
-  WireGuard().set_device(ifindex=index, listen_port=port, private_key=pkey, peers=peers)
+  WireGuard().set_device(ifindex=index, listen_port=port, private_key=pkey, peers=peers, fwmark=fwmark)
 
   for peer in config['peers']:
     for aip in peer['allowed_ips']:

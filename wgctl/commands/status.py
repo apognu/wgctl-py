@@ -49,6 +49,7 @@ def info(context, instance):
   {Style.DIM}interface:{Style.RESET_ALL} {instance}
   {Style.DIM}public key:{Style.RESET_ALL} {format_key(interface['public_key'])}
   {Style.DIM}listening port:{Style.RESET_ALL} {interface['listen_port']}
+  {Style.DIM}fwmark:{Style.RESET_ALL} {interface['fwmark']}
 """
 
   for peer in interface['peers']:
