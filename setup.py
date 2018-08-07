@@ -7,7 +7,9 @@ setup(
   include_package_data=True,
   install_requires=[
     'Click',
-    'pyyaml'
+    'pyyaml',
+    'pyroute2',
+    'colorama'
   ],
   entry_points='''
     [console_scripts]

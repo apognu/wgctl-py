@@ -1,54 +1,47 @@
 import click
 
-from wgctl.util.exec import run
 from wgctl.util.cli import ok, fatal, info
 from wgctl.util.config import get_config
+from wgctl.util.netlink import WireGuard
+from wgctl.util.network import parse_net
+from pyroute2 import IPRoute
 
 @click.command(help='starts up a tunnel')
 @click.pass_context
 @click.argument('instance')
 def up(context, instance):
-  verbose = context.obj['verbose']
   instance, config = get_config(instance)
+  wg = WireGuard()
 
-  if run(context, 'wg show {}'.format(instance), abort_on_error=False, silence=True):
+  if wg.device_exists(ifname=instance):
     fatal('WireGuard interface is already up.')
-
-  address = config['interface']['address']
-  port = str(config['interface']['listen_port'])
-  pkey = config['interface']['private_key']
-
-  run(context, 'ip link add {} type wireguard'.format(instance), label='Creating interface {}'.format(instance))
-  run(context, 'ip address add {} dev {}'.format(address, instance), label='Setting IP address {}'.format(address))
-  run(context, 'ip link set {} up'.format(instance), label='Enabling interface')
   
-  wg_args = [
-    'wg', 'set', instance,
-    'listen-port', port,
-    'private-key', pkey,
-  ]
+  with open(config['interface']['private_key']) as key:
+    config['interface']['private_key'] = key.readline().strip()
+
+  address, cidr = parse_net(config['interface']['address'])
+  port = config['interface']['listen_port']
+  pkey = config['interface']['private_key']
+  peers = config['peers']
+
+  ip = IPRoute()
+  ip.link('add', ifname=instance, kind='wireguard')
+  
+  index = ip.link_lookup(ifname=instance)[0]
+  
+  ip.link('set', index=index, state='up')
+  ip.addr('add', index=index, address=address, prefixlen=cidr)
+
+  WireGuard().set_device(ifindex=index, listen_port=port, private_key=pkey, peers=peers)
 
   for peer in config['peers']:
-    wg_args = wg_args + ['peer', peer['public_key']]
-
-    if peer['endpoint']:
-      wg_args = wg_args + ['endpoint', peer['endpoint']]
-    if peer['allowed_ips']:
-      wg_args = wg_args + ['allowed-ips', ','.join(peer['allowed_ips'])]
-    
-    for net in peer['allowed_ips']:
-      if net == '0.0.0.0/0':
-        if verbose:
-          info('Catch-all subnet detected, setting default route')
-
-        run(context, 'wg set {} fwmark {}'.format(instance, port), label=' -> Setting fwmark {}'.format(port))
-        run(context, 'ip route add default dev {} table {}'.format(instance, port), label=' -> Adding default route to table {}'.format(port))
-        run(context, 'ip rule add not fwmark {0} table {0}'.format(port), label=' -> Adding a rule for all traffic to table {}'.format(port))
-        run(context, 'ip rule add table main suppress_prefixlength 0 priority 32000', label=' -> Addding suppress_prefixlength to main routing table')
+    for aip in peer['allowed_ips']:
+      if aip == '0.0.0.0/0':
+        ip.route('add', dst='0.0.0.0/0', oif=index, table=port)
+        ip.rule('add', table=254, FRA_SUPPRESS_PREFIXLEN=0, priority=18000)
+        ip.rule('add', fwmark=port, fwmask=0, table=port, priority=20000)
       else:
-        run(context, 'ip route add {} dev {}'.format(net, instance))
-  
-  run(context, wg_args, split=False, label='Setting up WireGuard parameters')
+        ip.route('add', dst=aip, oif=index)
 
   ok('WireGuard tunnel set up successfully')
 
@@ -58,15 +51,24 @@ def up(context, instance):
 def down(context, instance):
   instance, config = get_config(instance)
 
-  if not run(context, 'wg show {}'.format(instance), abort_on_error=False, silence=True):
+  if not WireGuard().device_exists(ifname=instance):
     fatal('WireGuard interface is already down.')
 
-  port = str(config['interface']['listen_port'])
-  
-  run(context, 'ip link delete {}'.format(instance), abort_on_error=False, label='Deleting interface {}'.format(instance))
-  run(context, 'ip rule delete not from all fwmark {0} lookup {0}'.format(port), abort_on_error=False)
-  run(context, 'ip rule delete table main priority 32000', label=' -> Deleting suppress_prefixlength to main routing table', abort_on_error=False)
+  port = config['interface']['listen_port']
 
+  ip = IPRoute()
+  ip.link('delete', ifname=instance)
+
+  nets = [peer['allowed_ips'] for peer in config['peers']]
+  nets = [item for sublist in nets for item in sublist]
+
+  if '0.0.0.0/0' in nets:
+    try:
+      ip.rule('delete', table=254, FRA_SUPPRESS_PREFIXLEN=0, priority=18000)
+      ip.rule('delete', fwmark=port, fwmask=0, table=port, priority=20000)
+    except:
+      pass
+  
   ok('WireGuard tunnel brought down successfully')
 
 @click.command(help='restarts a tunnel (reloading its configuration)')

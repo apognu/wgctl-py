@@ -2,6 +2,7 @@ import click
 
 from os import getuid
 from wgctl.util.cli import fatal
+from base64 import b64encode
 
 from wgctl.commands import \
   version, \
@@ -15,7 +16,7 @@ def main(context, verbose):
   context.obj = {
     'verbose': verbose
   }
-  
+
   pass
 
 if getuid() > 0:

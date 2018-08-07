@@ -1,9 +1,11 @@
 import click
 
-from wgctl.util.exec import run
 from wgctl.util.cli import ok, error, fatal
 from wgctl.util.config import get_config
+from wgctl.util.netlink import WireGuard
+from wgctl.util.network import format_key
 from sys import exit
+from colorama import Fore, Style
 
 @click.command(help='shows if a tunnel is up')
 @click.pass_context
@@ -12,20 +14,18 @@ def status(context, instance):
   if instance is None:
     return status_all(context)
   
-  instance, config = get_config(instance)
+  instance, _ = get_config(instance)
 
-  if not run(context, 'wg show {}'.format(instance), abort_on_error=False, silence=True):
+  if not WireGuard().device_exists(instance):
     error('WireGuard interface is down.')
     exit(1)
   else:
     ok('WireGuard interface is up')
 
 def status_all(context):
-  (success, interfaces) = run(context, 'wg show interfaces', silence=True, return_output=True)
-  if not success:
-    fatal('could not retrieve WireGuard interfaces')
+  interfaces = WireGuard().get_devices()
 
-  for iface in iter(interfaces.split(' ')):
+  for iface in interfaces:
     if not iface.strip():
       continue
     
@@ -41,9 +41,31 @@ def status_all(context):
 @click.argument('instance')
 def info(context, instance):
   instance, config = get_config(instance)
+  interface = WireGuard().get_device_dict(ifname=instance)
+  interface = interface[instance]
 
-  if not run(context, 'wg show {}'.format(instance), abort_on_error=False, silence=True):
-    error('WireGuard interface is down.')
-    exit(1)
-  
-  run(context, 'wg show {}'.format(instance), silence=True, show_output=True, abort_on_error=False)
+  output = f"""
+{Style.BRIGHT}{Fore.RED}tunnel:{Style.RESET_ALL} {config['description']}
+  {Style.DIM}interface:{Style.RESET_ALL} {instance}
+  {Style.DIM}public key:{Style.RESET_ALL} {format_key(interface['public_key'])}
+  {Style.DIM}listening port:{Style.RESET_ALL} {interface['listen_port']}
+"""
+
+  for peer in interface['peers']:
+    key = format_key(peer['public_key'])
+    peerconf = [peerconf for peerconf in config['peers'] if peerconf['public_key'] == key]
+    
+    description = '<no peer description>'
+    if len(peerconf) > 0 and 'description' in peerconf[0]:
+      description = peerconf[0]['description']
+
+    output += f"""
+  - {Style.BRIGHT}{Fore.GREEN}peer:{Style.RESET_ALL} {description}
+      {Style.DIM}public key:{Style.RESET_ALL} {key}
+      {Style.DIM}endpoint:{Style.RESET_ALL} {peer['endpoint'][0]}:{peer['endpoint'][1]}
+      {Style.DIM}allowed ips:{Style.RESET_ALL} {', '.join(peer['allowedips'])}
+      {Style.DIM}preshared key?{Style.RESET_ALL} {all(c == '0' for c in peer['preshared_key'].hex())}
+"""
+
+  print(output)
+
