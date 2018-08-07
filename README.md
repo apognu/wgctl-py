@@ -12,6 +12,9 @@ interface:
   address: 192.168.0.1/32
   listen_port: 42000
   private_key: /etc/wireguard/vpn1.key
+  fwmark: 1024
+  post_up:
+    - /usr/bin/nft add rule inet filter input udp dport 42000 accept
 peers:
   - description: VPN gateway at provider X
     public_key: cyfBMbaJ6kgnDYjio6xqWikvTz2HvpmvSQocRmF/ZD4=
@@ -22,6 +25,8 @@ peers:
 ```
 
 By default, ```wgctl``` will look for its configuration files under ```/etc/wireguard``` (as ```/etc/wireguard/<id>.yml```). This can be overriden by giving it a filesystem path instead of an identifier.
+
+The ```post_up``` and ```pre_down``` lists of commands are executed with an empty ```PATH```, so absolute paths must be used. The are also not executed in the context of a shell, so any subtitution will not work, as well as arguments with spaces (for now).
 
 ## Usage
 

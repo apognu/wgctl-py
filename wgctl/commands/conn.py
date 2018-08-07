@@ -44,6 +44,14 @@ def up(context, instance):
       else:
         ip.route('add', dst=aip, oif=index)
 
+  if 'post_up' in config['interface']:
+    from wgctl.util.exec import run
+
+    info('running post-up commands')
+
+    for cmd in config['interface']['post_up']:
+      run(context, cmd)
+
   ok('WireGuard tunnel set up successfully')
 
 @click.command(help='bring down a tunnel')
@@ -54,6 +62,14 @@ def down(context, instance):
 
   if not WireGuard().device_exists(ifname=instance):
     fatal('WireGuard interface is already down.')
+
+  if 'pre_down' in config['interface']:
+    from wgctl.util.exec import run
+
+    info('running pre-down commands')
+
+    for cmd in config['interface']['pre_down']:
+      run(context, cmd)
 
   port = config['interface']['listen_port']
 
