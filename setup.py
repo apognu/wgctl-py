@@ -11,6 +11,7 @@ setup(
     'Click',
     'pyyaml',
     'pyroute2',
+    'timeago',
     'colorama'
   ],
   entry_points='''

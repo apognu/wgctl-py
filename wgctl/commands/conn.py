@@ -36,13 +36,14 @@ def up(context, instance):
   WireGuard().set_device(ifindex=index, listen_port=port, private_key=pkey, peers=peers, fwmark=fwmark)
 
   for peer in config['peers']:
-    for aip in peer['allowed_ips']:
-      if aip == '0.0.0.0/0':
-        ip.route('add', dst='0.0.0.0/0', oif=index, table=port)
-        ip.rule('add', table=254, FRA_SUPPRESS_PREFIXLEN=0, priority=18000)
-        ip.rule('add', fwmark=port, fwmask=0, table=port, priority=20000)
-      else:
-        ip.route('add', dst=aip, oif=index)
+    if peer.get('allowed_ips'):
+      for aip in peer['allowed_ips']:
+        if aip == '0.0.0.0/0':
+          ip.route('add', dst='0.0.0.0/0', oif=index, table=port)
+          ip.rule('add', table=254, FRA_SUPPRESS_PREFIXLEN=0, priority=18000)
+          ip.rule('add', fwmark=port, fwmask=0, table=port, priority=20000)
+        else:
+          ip.route('add', dst=aip, oif=index)
 
   if 'post_up' in config['interface']:
     from wgctl.util.exec import run
@@ -76,7 +77,7 @@ def down(context, instance):
   ip = IPRoute()
   ip.link('delete', ifname=instance)
 
-  nets = [peer['allowed_ips'] for peer in config['peers']]
+  nets = [peer.get('allowed_ips', []) for peer in config['peers']]
   nets = [item for sublist in nets for item in sublist]
 
   if '0.0.0.0/0' in nets:
