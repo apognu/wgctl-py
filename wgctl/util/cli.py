@@ -8,8 +8,11 @@ def fatal(message):
 def info(message):
   print('{}[-]{} {}'.format(Style.BRIGHT, Style.RESET_ALL, message))
 
-def ok(message):
-  print('{}[✓]{} {}'.format(Fore.GREEN, Style.RESET_ALL, message))
+def ok(message, symbol='✓'):
+  print('{}[{}]{} {}'.format(Fore.GREEN, symbol, Style.RESET_ALL, message))
+
+def dim(message, symbol='-'):
+  print('{}[{}] {}'.format(Style.DIM, symbol, message))
 
 def error(message, details=None):
   if details is None:

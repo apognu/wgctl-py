@@ -9,7 +9,7 @@ def get_config(instance):
   if path.isfile(instance):
     config_path = instance
     instance = Path(instance).resolve().stem
-
+  
   try:
     with open(config_path) as stream:
       config = yaml.load(stream)

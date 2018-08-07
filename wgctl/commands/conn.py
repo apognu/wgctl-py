@@ -22,7 +22,7 @@ def up(context, instance):
   address, cidr = parse_net(config['interface']['address'])
   port = config['interface']['listen_port']
   pkey = config['interface']['private_key']
-  fwmark = config['interface']['fwmark']
+  fwmark = config['interface'].get('fwmark')
   peers = config['peers']
 
   ip = IPRoute()

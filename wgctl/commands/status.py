@@ -1,6 +1,7 @@
 import click
 
-from wgctl.util.cli import ok, error, fatal
+from glob import glob
+from wgctl.util.cli import ok, error, fatal, dim
 from wgctl.util.config import get_config
 from wgctl.util.netlink import WireGuard
 from wgctl.util.network import format_key
@@ -20,7 +21,7 @@ def status(context, instance):
     error('WireGuard interface is down.')
     exit(1)
   else:
-    ok('WireGuard interface is up')
+    ok('WireGuard interface is up', symbol='↑')
 
 def status_all(context):
   interfaces = WireGuard().get_devices()
@@ -34,12 +35,28 @@ def status_all(context):
     if 'description' in config is not None:
       description = '{} ({})'.format(config['description'], iface.strip())
 
-    ok(description)
+    ok(description, symbol='↑')
+
+  for file in glob('/etc/wireguard/*.yml'):
+    instance, config = get_config(file)
+
+    if config is not None and not instance in interfaces:
+      description = instance
+      if 'description' in config:
+        description = '{} ({})'.format(config['description'], instance)
+      
+      dim(description, symbol='↓')
+    
 
 @click.command(help='shows information on a particular tunnel')
 @click.pass_context
 @click.argument('instance')
 def info(context, instance):
+  wg = WireGuard()
+
+  if not wg.device_exists(instance):
+    fatal('device does not exist')
+
   instance, config = get_config(instance)
   interface = WireGuard().get_device_dict(ifname=instance)
   interface = interface[instance]
