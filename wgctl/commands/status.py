@@ -64,7 +64,7 @@ def info(context, instance):
       {Style.DIM}public key:{Style.RESET_ALL} {key}
       {Style.DIM}endpoint:{Style.RESET_ALL} {peer['endpoint'][0]}:{peer['endpoint'][1]}
       {Style.DIM}allowed ips:{Style.RESET_ALL} {', '.join(peer['allowedips'])}
-      {Style.DIM}preshared key?{Style.RESET_ALL} {all(c == '0' for c in peer['preshared_key'].hex())}
+      {Style.DIM}preshared key?{Style.RESET_ALL} {not all(c == '0' for c in peer['preshared_key'].hex())}
 """
 
   print(output)
