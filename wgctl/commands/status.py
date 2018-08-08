@@ -20,10 +20,10 @@ def status(context, instance):
   instance, _ = get_config(instance)
 
   if not WireGuard().device_exists(instance):
-    error('WireGuard interface is down.')
+    error('tunnel interface is down.')
     exit(1)
   else:
-    ok('WireGuard interface is up', symbol='↑')
+    ok('tunnel interface is up', symbol='↑')
 
 def status_all(context):
   interfaces = WireGuard().get_devices()
@@ -74,11 +74,12 @@ def info(context, instance):
     attr('fwmark:', fwmark)
   ]
 
-  output = print_tunnel(config['description'])
+  output = print_tunnel(config.get('description', '<no tunnel description>'))
   output += ''.join([line for line in attrs if line is not None])
-  output += '\n'
 
-  for peer in interface['peers']:
+  for peer in interface.get('peers', []):
+    output += '\n'
+    
     key = format_key(peer['public_key'])
     peerconf = [peerconf for peerconf in config['peers'] if peerconf['public_key'] == key]
     
@@ -99,6 +100,11 @@ def info(context, instance):
     else:
       handshake = timeago.format(peer['last_handshake_time'], datetime.now())
 
+    if peer['persistent_keepalive_interval'] > 0:
+      keepalive = f'Every {peer["persistent_keepalive_interval"]}s'
+    else:
+      keepalive = None
+
     rx_bytes = peer['rx_bytes']
     tx_bytes = peer['tx_bytes']
     traffic = rx_bytes + tx_bytes
@@ -109,6 +115,7 @@ def info(context, instance):
       attr('allowed ips:', allowed_ips, pad=4),
       attr('preshared key?', not all(c == '0' for c in peer['preshared_key'].hex()), pad=4),
       attr('last handshake:', handshake, pad=4),
+      attr('persistent keepalive:', keepalive, pad=4),
       attr('transfer:', f'↓ {rx_bytes} B ↑ {tx_bytes} B', rx_bytes + tx_bytes > 0, pad=4)
     ]
 

@@ -15,6 +15,7 @@ from pyroute2.netlink import genlmsg
 from pyroute2.netlink.generic import GenericNetlinkSocket
 
 from wgctl.util.network import parse_key, parse_net
+from wgctl.util.cli import fatal
 from pyroute2 import IPRoute
 
 WG_GENL_NAME = 'wireguard'
@@ -182,7 +183,7 @@ class WireGuard(GenericNetlinkSocket):
         dev[key] = val
     return ret
 
-  def set_device(self, ifname=None, ifindex=None, *, listen_port=None, fwmark=None, private_key=None, peers=None):
+  def set_device(self, ifname=None, ifindex=None, config={}):
     msg = wgmsg()
     msg['cmd'] = WG_CMD_SET_DEVICE
     msg['version'] = WG_GENL_VERSION
@@ -194,18 +195,42 @@ class WireGuard(GenericNetlinkSocket):
     else:
       raise ValueError('ifname or ifindex are unset')
 
-    if listen_port != None:
-      msg['attrs'].append(['WGDEVICE_A_LISTEN_PORT', listen_port])
+    interface = config.get('interface')
+    if interface is None:
+      fatal('configuration is missing "interface" key')
+    
+    port = interface.get('listen_port')
+    pkey = interface.get('private_key')
+    if not all([port, pkey]):
+      fatal('interface must have at least a "private_key" and "listen_port"')
+
+    fwmark = interface.get('fwmark')
+    peers = config.get('peers')
+
+    if port != None:
+      msg['attrs'].append(['WGDEVICE_A_LISTEN_PORT', port])
     if fwmark != None:
       msg['attrs'].append(['WGDEVICE_A_FWMARK', fwmark])
-    if private_key != None:
-      msg['attrs'].append(['WGDEVICE_A_PRIVATE_KEY', parse_key('private_key', private_key)])
+    if pkey != None:
+      msg['attrs'].append(['WGDEVICE_A_PRIVATE_KEY', parse_key('private_key', pkey)])
     
     if peers is not None:
       wgpeers = []
       
       for peer in peers:
         wgpeer = wgmsg.wgpeer()
+
+        if 'preshared_key' in peer:
+          if len(peer['preshared_key']) != 64:
+            fatal('pre-shared key must be 64 hexadecimal characters')
+          
+          wgpeer['attrs'].append(['WGPEER_A_PRESHARED_KEY', bytearray.fromhex(peer['preshared_key'])])
+
+        if 'persistent_keepalive_interval' in peer:
+          try:
+            wgpeer['attrs'].append(['WGPEER_A_PERSISTENT_KEEPALIVE_INTERVAL', int(peer['persistent_keepalive_interval'])])
+          except ValueError:
+            pass
 
         if 'endpoint' in peer:
           try:

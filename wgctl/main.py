@@ -9,7 +9,9 @@ from wgctl.commands import \
   conn, \
   status
 
-@click.group()
+CONTEXT_SETTINGS=dict(help_option_names=['-h', '--help'])
+
+@click.group(context_settings=CONTEXT_SETTINGS)
 @click.pass_context
 @click.option('--verbose', '-v', is_flag=True, default=False)
 def main(context, verbose):

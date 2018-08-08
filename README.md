@@ -19,6 +19,7 @@ peers:
   - description: VPN gateway at provider X
     public_key: cyfBMbaJ6kgnDYjio6xqWikvTz2HvpmvSQocRmF/ZD4=
     endpoint: 1.2.3.4:42000
+    persistent_keepalive_interval: 10
     allowed_ips:
       - 192.168.0.0/24
       - 192.168.1.0/24
