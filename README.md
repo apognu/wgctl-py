@@ -40,11 +40,11 @@ Options:
   --help         Show this message and exit.
 
 Commands:
-  down     bring down a tunnel
-  downup   restarts a tunnel (reloading its...
+  stop     bring down a tunnel
+  restart  restarts a tunnel (reloading its...
   info     shows information on a particular tunnel
   status   shows if a tunnel is up
-  up       starts up a tunnel
+  start    starts up a tunnel
   version
 
 $ wgctl up vpn1
