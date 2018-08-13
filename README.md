@@ -1,3 +1,5 @@
+This was a test project to get myself familiarized with WireGuard and Netlink. The final project is made with Golang and can be found at https://github.com/apognu/wgctl.
+
 # wgctl - WireGuard control utility
 
 This is a personal project to allow WireGuard to be configured through the use of YAML files. It uses Netlink under the hood for all interaction with the system.
